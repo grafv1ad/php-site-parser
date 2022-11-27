@@ -48,40 +48,46 @@ class Parser
         return $res;
     }
 
-    private function getNameSite() {
+    private function getNameSite(): string {
         $name = explode('/', $this->url);
         return $name[2];
     }
     
-    // сделать функцию общего использования (с css, js)
-    public function getImageHrefs()
+    public function getHrefs(string $type, string $html = ''): array
     {   
-        $pattern = "/img.+src=.+\.(png|jpg|svg)/";
-        preg_match_all($pattern, $this->html, $matches);
+        $html = empty($html) ? $this->html : $html;
+        $format = ($type === 'img') ? '(png|jpg|svg)' : $type;
+        $pattern = "/[_\w\d\.\/-]+\.$format/";
+        preg_match_all($pattern, $html, $matches);
+        if (empty($matches[0])) return array();
+
+        $arHrefs = [];
+
         for ($i = 0; $i < count($matches[0]); $i++)
         {
-            $imgHTML = $matches[0][$i];
-            preg_match_all("/[\w\d\-_\/:]+[^\.]/", $imgHTML, $m);
-            $format = $m[0][3];
-            $path = $m[0][2];
-            $name = explode('/', $path);
-            $path .= '.' . $format;
+            $findedHref = $matches[0][$i];
+            $formatFile = array_pop(preg_split("/[\/\.]/", $findedHref));
+            $name = explode('/', $findedHref);
             $name = $name[count($name) - 1];
-            $this->siteHrefsMap["img"][] = 
-            array(
-                'href' => $this->formatHref($path),
+            $posFormat = strpos($name, ".$formatFile");
+            $name = substr_replace($name, '', $posFormat, strlen($formatFile) + 1);
+            $href = $this->formatHref($findedHref);
+            $arHrefs[$name] = array(
+                'href' => $href,
+                'path' => $findedHref,
                 'name' => $name,
-                'format' => $format
+                'format' => $formatFile
             );
         }
+        
+        return $this->siteHrefsMap[$type] = $arHrefs;
     }
 
-    private function formatHref($href) {
+    private function formatHref($href): string {
         if (strpos($href, "http") === false) {
             return 'https://' . $this->siteName . '/' . $href;
         }
         return $href;
-
     }
 
     public function init_site()

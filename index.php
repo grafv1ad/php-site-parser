@@ -12,6 +12,8 @@
     }
 
     $parser->init_site();
-    $parser->getImageHrefs();
-    show($parser->siteHrefsMap);
+    $arIMG = $parser->getHrefs('img');
+    $arCss = $parser->getHrefs('css');
+    $arJs = $parser->getHrefs('js');
+    show($arIMG);
 ?>
