@@ -48,6 +48,67 @@ class Parser
         return $res;
     }
 
+    public function setDynamicPathToHTML()
+    {
+
+    }
+
+    public function setFile($res, $info)
+    {
+        $pathToFile = $this->dirSite . '/' . $info['type']
+         . '/' . $info['name'] . '.' . $info['format'];
+        if ($info['type'] === 'img')
+        {
+            $fp = fopen($pathToFile, 'wb');
+            fwrite($fp, $res);
+            fclose($fp);
+        } else
+        {
+            file_put_contents($pathToFile, $res);
+        }
+    }
+
+    public function multi_parse(array $hrefs, $callback)
+    {
+        $multi = curl_multi_init();
+        $channels = array();
+ 
+        foreach ($hrefs as $href) {
+            $req = curl_init();
+            curl_setopt($req, CURLOPT_URL, $href['href']);
+            curl_setopt($req, CURLOPT_HEADER, false);
+            curl_setopt($req, CURLOPT_RETURNTRANSFER, true);
+        
+            curl_multi_add_handle($multi, $req);
+            $href['req'] = $req;
+            $channels[$href['href']] = $href;
+        }
+ 
+        $active = null;
+        do {
+            $mrc = curl_multi_exec($multi, $active);
+        } while ($mrc == CURLM_CALL_MULTI_PERFORM);
+ 
+        while ($active && $mrc == CURLM_OK) {
+            if (curl_multi_select($multi) == -1) {
+                continue;
+            }
+
+            do {
+                $mrc = curl_multi_exec($multi, $active);
+            } while ($mrc == CURLM_CALL_MULTI_PERFORM);
+        }
+ 
+        foreach ($channels as $channel) {
+            $res = curl_multi_getcontent($channel['req']);
+            $resCode = curl_getinfo($channel['req'])['http_code'];
+            if ($resCode !== 200) continue;
+            $callback($this, $res, $channel);
+        }
+
+        curl_multi_close($multi);
+    }
+
     private function getNameSite(): string {
         $name = explode('/', $this->url);
         return $name[2];
@@ -72,14 +133,16 @@ class Parser
             $posFormat = strpos($name, ".$formatFile");
             $name = substr_replace($name, '', $posFormat, strlen($formatFile) + 1);
             $href = $this->formatHref($findedHref);
-            $arHrefs[$name] = array(
+            $arHrefs[] = array(
                 'href' => $href,
                 'path' => $findedHref,
                 'name' => $name,
+                'type' => $type,
                 'format' => $formatFile
             );
+            // #1 убрать повторные файлы
         }
-        
+
         return $this->siteHrefsMap[$type] = $arHrefs;
     }
 

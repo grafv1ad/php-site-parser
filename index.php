@@ -12,8 +12,11 @@
     }
 
     $parser->init_site();
-    $arIMG = $parser->getHrefs('img');
-    $arCss = $parser->getHrefs('css');
-    $arJs = $parser->getHrefs('js');
-    show($arIMG);
+    $hrefsCss = $parser->getHrefs('img');
+    $hrefsImg = $parser->getHrefs('css');
+    $hrefsJs = $parser->getHrefs('js');
+    show(array_merge($hrefsCss, $hrefsImg, $hrefsJs))
+    // $parser->multi_parse(array_merge($hrefsCss, $hrefsImg, $hrefsJs), function($ctx, $res, $info) {
+    //     $ctx->setFile($res, $info);
+    // });
 ?>
