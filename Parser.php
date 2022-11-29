@@ -1,18 +1,14 @@
 <?php
 
-function show($data) {
-    echo "<pre>";
-    print_r($data);
-    echo "</pre>";
-}
-
 class Parser
 {
     public $url;
     public $html;
     public $dirSite;
     public $siteName;
-    public $siteHrefsMap = [];
+    public $siteHrefsMap = array(
+        "css" => [], "img" => [], "js" => []
+    );
 
     public function __construct(string $url)
     {
@@ -35,7 +31,7 @@ class Parser
         $resCode = curl_getinfo($req)['http_code'];
 
         if (curl_errno($req)) {
-            self::setLog(curl_error($req), __LINE__);
+            self::log(curl_error($req), __LINE__);
         }
 
         curl_close($req);
@@ -48,15 +44,26 @@ class Parser
         return $res;
     }
 
-    public function setDynamicPathToHTML()
+    private function setDynamicPathToHTML($type, $name, $format, $old_path): void
     {
-
+        $neededPath = $type . '/' . $name . '.' . $format;
+        $this->html = str_replace($old_path, $neededPath, $this->html);
+        file_put_contents($this->dirSite . '/index.html', $this->html);
     }
 
     public function setFile($res, $info)
     {
         $pathToFile = $this->dirSite . '/' . $info['type']
          . '/' . $info['name'] . '.' . $info['format'];
+
+         if ($res['from'] !== 'css')
+         {
+            $this->setDynamicPathToHTML(
+                $info['type'], $info['name'],
+                $info['format'], $info['path']
+            );
+         }
+
         if ($info['type'] === 'img')
         {
             $fp = fopen($pathToFile, 'wb');
@@ -64,6 +71,51 @@ class Parser
             fclose($fp);
         } else
         {
+            if ($info['format'] === 'css')
+            {
+                $images = $this->getHrefs('img', $res);
+                if (!empty($images))
+                {
+                    $GLOBALS['extraImages'] = [];
+                    $images = array_map(function($el) {
+                        $tmp = $el['href'];
+                        $el['href'] = str_replace('..', 'assets', $el['href']);
+                        $el['from'] = 'css';
+                        $GLOBALS['extraImages'][] = array(
+                            'href' => str_replace('../', '', $tmp),
+                            'path' => $el['path'],
+                            'name' => $el['name'],
+                            'type' => $el['type'],
+                            'format' => $el['format'],
+                            'from' => 'css'
+                        );
+                        $GLOBALS['extraImages'][] = array(
+                            'href' => str_replace('..', 'uploads', $tmp),
+                            'path' => $el['path'],
+                            'name' => $el['name'],
+                            'type' => $el['type'],
+                            'format' => $el['format'],
+                            'from' => 'css'
+                        );
+                        return $el;
+                    }, $images);
+
+
+                    $this->siteHrefsMap['img'] = array_merge(
+                        $this->siteHrefsMap['img'],
+                        $images, 
+                        $GLOBALS['extraImages']
+                    );
+
+                    unset($GLOBALS['extraImages']);
+
+                    foreach ($images as $image)
+                    {
+                        $neededPath = '../img/' . $image['name'] . '.' . $image['format'];
+                        $res = str_replace($image['path'], $neededPath, $res);
+                    }
+                }
+            }
             file_put_contents($pathToFile, $res);
         }
     }
@@ -102,10 +154,12 @@ class Parser
         foreach ($channels as $channel) {
             $res = curl_multi_getcontent($channel['req']);
             $resCode = curl_getinfo($channel['req'])['http_code'];
-            if ($resCode !== 200) continue;
+            if ($resCode !== 200) {
+                self::log('Не нашёл :( ' . $channel['href'], __LINE__);
+                continue;
+            }
             $callback($this, $res, $channel);
         }
-
         curl_multi_close($multi);
     }
 
@@ -118,7 +172,7 @@ class Parser
     {   
         $html = empty($html) ? $this->html : $html;
         $format = ($type === 'img') ? '(png|jpg|svg)' : $type;
-        $pattern = "/[_\w\d\.\/-]+\.$format/";
+        $pattern = "/[:_\w\d\.\/-]+\.$format/";
         preg_match_all($pattern, $html, $matches);
         if (empty($matches[0])) return array();
 
@@ -140,10 +194,31 @@ class Parser
                 'type' => $type,
                 'format' => $formatFile
             );
-            // #1 убрать повторные файлы
         }
 
-        return $this->siteHrefsMap[$type] = $arHrefs;
+        return $this->getUniqArray($arHrefs, 'path');
+    }
+
+    public function getUniqArray($array, $value): array
+    {
+        $uniqPath = [];
+        $GLOBALS['repeatIndex'] = [];
+        for ($i = 0; $i < count($array); $i++)
+        {
+            if (in_array($array[$i][$value], $uniqPath)) {
+                $GLOBALS['repeatIndex'][$i] = 1;
+                continue;
+            }
+            $uniqPath[] = $array[$i][$value];
+        }
+
+        $uniqArray = array_filter($array, function ($_, $key) {
+            return $GLOBALS['repeatIndex'][$key] !== 1;
+        }, ARRAY_FILTER_USE_BOTH);
+
+        unset($GLOBALS['repeatIndex']);
+
+        return $uniqArray;
     }
 
     private function formatHref($href): string {
@@ -156,21 +231,14 @@ class Parser
     public function init_site()
     {
         $this->dirSite = __DIR__ . '/html/' . $this->siteName;
-
-        if (is_dir($this->dirSite)) return;
-
-        $isDirSite = mkdir($this->dirSite, 0777, true);
-
-        if ($isDirSite)
-        {
-            mkdir($this->dirSite . '/img');
-            mkdir($this->dirSite . '/css');
-            mkdir($this->dirSite . '/js');
-            file_put_contents($this->dirSite . '/index.html', $this->html);
-        }
+        mkdir($this->dirSite, 0777, true);
+        mkdir($this->dirSite . '/img');
+        mkdir($this->dirSite . '/css');
+        mkdir($this->dirSite . '/js');
+        file_put_contents($this->dirSite . '/index.html', $this->html);
     }
 
-    static function setLog($data, $line, $dir = __DIR__ . "/log.txt") {
+    static function log($data, $line, $dir = __DIR__ . "/log.txt") {
         file_put_contents(
             $dir, 
             "\n[" . date('Y-m-d H:i:s') .  "]\n (#" .
