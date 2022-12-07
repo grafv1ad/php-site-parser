@@ -3,7 +3,11 @@
     require_once __DIR__ . '/utils.php';
     require_once __DIR__ . '/' . "Parser.php";
 
-    $parser = new Parser("https://ВАШ_САЙТ/");
+    $site = $_GET['site'];
+    $ssl = !isset($_GET['ssl']) || !!$_GET['ssl'];
+    $url = ($ssl ? 'https' : 'http') . '://' . $site;
+
+    $parser = new Parser($url);
 
     if (!$parser->html)
     {
