@@ -11,7 +11,8 @@ class Parser
     );
     private $dirSite;
     private $dirAssets;
-    private $dirAssetsName = 'assets';
+    const dirResultsName = 'html';
+    const dirAssetsName = 'assets';
 
     public function __construct(string $url)
     {
@@ -49,7 +50,7 @@ class Parser
 
     private function setDynamicPathToHTML($type, $name, $format, $old_path): void
     {
-        $neededPath = $this->dirAssetsName . '/' . $type . '/' . $name . '.' . $format;
+        $neededPath = self::dirAssetsName . '/' . $type . '/' . $name . '.' . $format;
         $this->html = str_replace($old_path, $neededPath, $this->html);
         file_put_contents($this->dirSite . '/index.html', $this->html);
     }
@@ -245,7 +246,7 @@ class Parser
     }
 
     private function formatHref($href): string {
-        if (strpos($href, "http") === false) {
+        if (strpos($href, 'http') === false) {
             return 'https://' . $this->domain . '/' . $href;
         }
         return $href;
@@ -253,8 +254,8 @@ class Parser
 
     public function init_site()
     {
-        $this->dirSite = __DIR__ . '/results/' . $this->siteName;
-        $this->dirAssets =  $this->dirSite . '/' . $this->dirAssetsName;
+        $this->dirSite = __DIR__ . '/' . self::dirResultsName . '/' . $this->siteName;
+        $this->dirAssets =  $this->dirSite . '/' . self::dirAssetsName;
 
         if (!is_dir($this->dirSite)) {
             mkdir($this->dirSite, 0777, true);
