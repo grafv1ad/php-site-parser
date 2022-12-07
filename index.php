@@ -3,14 +3,14 @@
     require_once __DIR__ . '/utils.php';
     require_once __DIR__ . '/' . 'Parser.php';
 
-    $site = $_GET['site'];
-    $ssl = !isset($_GET['ssl']) || !!$_GET['ssl'];
-    $url = ($ssl ? 'https' : 'http') . '://' . $site;
+    if (!isset($_GET['site_url'])) {
+        echo "Пропишите GET-параметр в адресную строку <b>?site_url=ВАШ_САЙТ</b>";
+        die;
+    }
 
-    $parser = new Parser($url);
+    $parser = new Parser($_GET['site_url']);
 
-    if (!$parser->html)
-    {
+    if (!$parser->html) {
         unset($parser);
         echo '<h1 style="font-family: sans-serif;"><b style="color: red;">Error:</b> Nothing to parse ¯\_(ツ)_/¯</h1>';
         die;

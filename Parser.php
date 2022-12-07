@@ -5,6 +5,7 @@ class Parser
     public $url;
     public $html;
     public $siteName;
+    public $domain;
     public $siteHrefsMap = array(
         "css" => [], "img" => [], "js" => []
     );
@@ -165,8 +166,25 @@ class Parser
     }
 
     private function getNameSite(): string {
-        $name = explode('/', $this->url);
-        return $name[2];
+        preg_match("/http(s|):\/\/.+\.\w+/", $this->url, $matches);
+
+        if (empty($matches)) {
+            echo "<b>Введите корректный адрес сайта<b>";
+            die;
+        }
+
+        $arSplitedURL = explode('/', $this->url);
+        $name = $arSplitedURL[2];
+
+        if (isset($arSplitedURL[3])) {
+            for ($i = 3; $i < count($arSplitedURL); $i++) {
+                $name .= '/' . $arSplitedURL[$i];
+            }
+        }
+
+        $this->domain = $arSplitedURL[2];
+
+        return $name;
     }
     
     public function getHrefs(string $type, string $html = ''): array
@@ -228,7 +246,7 @@ class Parser
 
     private function formatHref($href): string {
         if (strpos($href, "http") === false) {
-            return 'https://' . $this->siteName . '/' . $href;
+            return 'https://' . $this->domain . '/' . $href;
         }
         return $href;
     }
