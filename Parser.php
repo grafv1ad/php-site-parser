@@ -4,11 +4,13 @@ class Parser
 {
     public $url;
     public $html;
-    public $dirSite;
     public $siteName;
     public $siteHrefsMap = array(
         "css" => [], "img" => [], "js" => []
     );
+    private $dirSite;
+    private $dirAssets;
+    private $dirAssetsName = 'assets';
 
     public function __construct(string $url)
     {
@@ -46,18 +48,17 @@ class Parser
 
     private function setDynamicPathToHTML($type, $name, $format, $old_path): void
     {
-        $neededPath = $type . '/' . $name . '.' . $format;
+        $neededPath = $this->dirAssetsName . '/' . $type . '/' . $name . '.' . $format;
         $this->html = str_replace($old_path, $neededPath, $this->html);
         file_put_contents($this->dirSite . '/index.html', $this->html);
     }
 
     public function setFile($res, $info)
     {
-        $pathToFile = $this->dirSite . '/' . $info['type']
+        $pathToFile = $this->dirAssets . '/' . $info['type']
          . '/' . $info['name'] . '.' . $info['format'];
 
-         if ($res['from'] !== 'css')
-         {
+         if (!isset($res['from'])) {
             $this->setDynamicPathToHTML(
                 $info['type'], $info['name'],
                 $info['format'], $info['path']
@@ -180,16 +181,17 @@ class Parser
 
         for ($i = 0; $i < count($matches[0]); $i++)
         {
-            $findedHref = $matches[0][$i];
-            $formatFile = array_pop(preg_split("/[\/\.]/", $findedHref));
-            $name = explode('/', $findedHref);
+            $finderHref = $matches[0][$i];
+            $arSplitedHref = preg_split("/[\/\.]/", $finderHref);
+            $formatFile = array_pop($arSplitedHref);
+            $name = explode('/',  $finderHref);
             $name = $name[count($name) - 1];
             $posFormat = strpos($name, ".$formatFile");
             $name = substr_replace($name, '', $posFormat, strlen($formatFile) + 1);
-            $href = $this->formatHref($findedHref);
+            $href = $this->formatHref($finderHref);
             $arHrefs[] = array(
                 'href' => $href,
-                'path' => $findedHref,
+                'path' => $finderHref,
                 'name' => $name,
                 'type' => $type,
                 'format' => $formatFile
@@ -213,7 +215,10 @@ class Parser
         }
 
         $uniqArray = array_filter($array, function ($_, $key) {
-            return $GLOBALS['repeatIndex'][$key] !== 1;
+            if (isset($GLOBALS['repeatIndex'][$key])) {
+                return $GLOBALS['repeatIndex'][$key] !== 1;
+            }
+            return $_;
         }, ARRAY_FILTER_USE_BOTH);
 
         unset($GLOBALS['repeatIndex']);
@@ -231,10 +236,23 @@ class Parser
     public function init_site()
     {
         $this->dirSite = __DIR__ . '/html/' . $this->siteName;
-        mkdir($this->dirSite, 0777, true);
-        mkdir($this->dirSite . '/img');
-        mkdir($this->dirSite . '/css');
-        mkdir($this->dirSite . '/js');
+        $this->dirAssets =  $this->dirSite . '/' . $this->dirAssetsName;
+
+        if (!is_dir($this->dirSite)) {
+            mkdir($this->dirSite, 0777, true);
+        }
+        if (!is_dir($this->dirAssets)) {
+            mkdir($this->dirAssets, 0777, true);
+        }
+        if (!is_dir($this->dirAssets . '/img')) {
+            mkdir($this->dirAssets . '/img');
+        }
+        if (!is_dir($this->dirAssets . '/css')) {
+            mkdir($this->dirAssets . '/css');
+        }
+        if (!is_dir($this->dirAssets . '/js')) {
+            mkdir($this->dirAssets . '/js');
+        }
         file_put_contents($this->dirSite . '/index.html', $this->html);
     }
 
@@ -246,3 +264,5 @@ class Parser
         );
     }
 }
+
+?>
