@@ -3,10 +3,15 @@
     require_once __DIR__ . '/utils.php';
     require_once __DIR__ . '/' . "Parser.php";
 
-    $parser = new Parser("https://ВАШ_САЙТ/");
 
-    if (!$parser->html)
-    {
+    if (!isset($_GET['site_url'])) {
+        echo "Пропишите GET-параметр в адресную строку <b>?site_url=ВАШ_САЙТ</b>";
+        die;
+    }
+
+    $parser = new Parser($_GET['site_url']);
+
+    if (!$parser->html) {
         unset($parser);
         echo "<b>Нечего парсить :(</b>";
         die;
