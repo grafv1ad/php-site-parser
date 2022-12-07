@@ -253,7 +253,7 @@ class Parser
 
     public function init_site()
     {
-        $this->dirSite = __DIR__ . "/html/" . "$this->siteName";
+        $this->dirSite = __DIR__ . '/results/' . $this->siteName;
         $this->dirAssets =  $this->dirSite . '/' . $this->dirAssetsName;
 
         if (!is_dir($this->dirSite)) {
