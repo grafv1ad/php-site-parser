@@ -57,12 +57,13 @@ a {
             }
         }
         &-list {
-            column-count: 5;
-            column-gap: 15px;
-            column-fill: balance;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
             a {
                 display: block;
                 width: max-content;
+                word-break: break-all;
                 margin: 0 0 8px;
             }
         }
